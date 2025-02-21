@@ -1,6 +1,7 @@
 from helpers import tools
 import asyncpg
 import sys
+import queries
 
 DBConfig = {
     "user": tools.ReadEnvVar("USER_DB"),
@@ -26,3 +27,11 @@ class Database():
             self.pool = await asyncpg.create_pool(**DBConfig)
         except Exception as e:
             sys.exit(e)
+
+        # creating table on database connection
+        await self.pool.execute(queries.create_table_query)
+
+
+    async def fetch_products(self):
+        async with self.pool.acquire() as connection:
+            return await connection.fetch(queries.fetch_items_query)

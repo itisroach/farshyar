@@ -12,7 +12,9 @@ create_table_query = """
     )
 """
 
-
+insert_item_query = """
+    INSERT INTO products (id, title, quantity, details, post_link, post_id) VALUES ($1, $2, $3, $4, $5, $6)
+"""
 
 delete_item_query = """
     DELETE FROM products WHERE post_id = $1
@@ -21,4 +23,9 @@ delete_item_query = """
 
 update_item_query = """
     UPDATE products SET quantity = $1 WHERE p
+"""
+
+
+fetch_items_query = """
+    SELECT (title, quantity, details, post_link, post_id, created_at) FROM products
 """
