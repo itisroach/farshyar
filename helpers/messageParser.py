@@ -2,20 +2,19 @@ import re
 from . import tools
 
 def ParseMessage(message: str):
-    pattern = r"(شانه|متر|تخته|تراکم)?\s*([\d\u06F0-\u06F9]+)\s*(شانه|تراکم|متر|تخته)?"
-    title_pattern = r"^(.*فرش.*)$"
+    pattern = r"(\d{4}\s?شانه|\d{3}\s?شانه|\d+\s?ش|\d{1,2}\s?ت|[\d]+(?:\s?متر|متری|متراژ)?|کد\s?\d+|\d+)"
+    title_pattern = r"^(.*)"
     matches = re.findall(pattern, message)
     
-    foundTitle = re.findall(title_pattern, message, re.MULTILINE)
+    foundTitle = re.findall(title_pattern, message)
 
-    # Normalize results: Combine number with the correct unit
-    results = []
-    for unit1, num, unit2 in matches:
-        unit = unit1 if unit1 else unit2  # Pick the existing unit
 
-        if unit:  # Only add valid matches
-            results.append(num + " " + unit)
+    print("matches",matches)
 
-    results.append(foundTitle[0])
+    matches.append(foundTitle[0])
+
     
-    tools.Create_Data(results)
+    data = tools.Create_Data(matches)
+
+    return data
+    
