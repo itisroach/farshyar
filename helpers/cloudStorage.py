@@ -50,7 +50,7 @@ async def ProcessImages(event, client, extractedWords, db, isAlbum):
     image_urls = await asyncio.gather(*tasks)
 
     # creating data and inserting the to database
-    await Create_Data(extractedWords, image_urls, db)
+    await Create_Data(extractedWords, image_urls, db, event)
 
 
 # this function uploads to cloud using boto3
