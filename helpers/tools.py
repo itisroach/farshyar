@@ -10,6 +10,11 @@ def ReadEnvVar(name: str):
 
     return value
 
+# generate a link of telegram message to be accessed 
+def GeneratePostLink(channel_username, message_id):
+    link = f"https://t.me/c/{channel_username}/{message_id}"
+
+    return link
 
 # a data type that can generate a list of tuples that can store tuples like this (size, quantity) this is for knowing how many stocks we have in each size
 class Sizes():
@@ -47,15 +52,22 @@ class Sizes():
 
 
 # this simply returns a python dict containing products information that is represented for database fields 
-async def Create_Data(extractedWords: list[str], images: list[str], db):
+async def Create_Data(extractedWords: list[str], images: list[str], db, event):
+
+    # getting information about chat
+    chat_info = await event.get_chat()
+
+    # getting the message id
+    message_id = event.original_update.message.id
 
     data = {
         "title": extractedWords[-1],
         "details": "",
         "sizes": [],
         "comb": 0,
-        "post_link": "test",
-        "post_id": "test",
+        "post_link": GeneratePostLink(chat_info.id, message_id),
+        "post_id": str(message_id),
+        "channel_id": str(chat_info.id),
         "images": images
     }
     size = Sizes()
@@ -96,13 +108,14 @@ async def Create_Data(extractedWords: list[str], images: list[str], db):
             size.add_data(length, 0)
 
 
+    data["title"] = f"{data["title"]} ۱۰۰٪ اکریلیک"
+
     # convert the Size class output to json so it can be stored in database
     data["sizes"] = (json.dumps(size.get_sizes()))
 
     # destory the class intance for further use to bed intialized
     size.destroy()
 
-    print(data)
     
     # inserting product to database
     await db.add_products(*data.values())
