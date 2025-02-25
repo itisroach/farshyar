@@ -42,13 +42,13 @@ async def main():
 
                 # add products to database if we don't have image
                 else:
-                    await tools.Create_Data(matches, None, db)
+                    await tools.Create_Data(matches, None, db, event)
 
         # this event happens when multiple images sent
         @client.on(events.Album())
         async def ListenForImages(event):
             # check if message contains text
-           if event.text:
+            if event.text:
                 # finding matches in text
                 matches = messageParser.ParseMessage(event.text)
                 # uploading file to cloud in the background
