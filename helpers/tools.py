@@ -129,13 +129,14 @@ class Sizes():
 
 
 # this simply returns a python dict containing products information that is represented for database fields 
-async def Create_Data(extractedWords: list[str], images: list[str], db, event):
-
+async def Create_Data(extractedWords: list[str], images: list[str], db, event, edited=False):
     # getting information about chat
     chat_info = await event.get_chat()
 
     # getting the message id
-    message_id = event.original_update.message.id
+    message_id = str(event.original_update.message.id)
+    channel_id = str(chat_info.id)
+
 
     data = {
         "title": "",
@@ -143,8 +144,8 @@ async def Create_Data(extractedWords: list[str], images: list[str], db, event):
         "sizes": [],
         "comb": 0,
         "post_link": GeneratePostLink(chat_info.id, message_id),
-        "post_id": str(message_id),
-        "channel_id": str(chat_info.id),
+        "post_id": message_id,
+        "channel_id": chat_info.id,
         "images": images
     }
     size = Sizes()
@@ -194,7 +195,20 @@ async def Create_Data(extractedWords: list[str], images: list[str], db, event):
     size.destroy()
 
 
-    # inserting product to database
-    await db.add_products(*data.values())
+    if edited == False:
+        # inserting product to database
+        await db.add_products(*data.values())
+    else:
+        data = {
+            "title": data["title"],
+            "details": data["details"],
+            "sizes": data["sizes"],
+            "comb": data["comb"]
+        }
 
+        if (not data["comb"] and not data["title"]) or len(data['sizes']) == 0:
+            return
+
+
+        await db.update_products(channel_id,message_id ,*data.values())
     
