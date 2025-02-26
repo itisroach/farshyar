@@ -1,6 +1,7 @@
 import boto3 
 import asyncio
 import os
+from db.main import Database
 from .tools import ReadEnvVar, Create_Data
 
 # cloud credentials
@@ -17,8 +18,10 @@ s3 = boto3.client(
     aws_secret_access_key=CLOUD_SECRET_KEY  
 )
 
+db = Database()
 
-async def ProcessImages(event, client, extractedWords, db, isAlbum):
+
+async def ProcessImages(event, client, extractedWords, isAlbum):
     # list of task for proccessing in parallel 
     tasks = []
     
