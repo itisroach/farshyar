@@ -3,7 +3,7 @@
 create_table_query = """
     CREATE TABLE IF NOT EXISTS products (
         id          SERIAL PRIMARY KEY,
-        title       VARCHAR(64) NOT NULL,
+        title       VARCHAR(256) NOT NULL,
         sizes       JSONB NOT NULL,
         comb        INT NOT NULL,
         details     TEXT,
@@ -35,7 +35,9 @@ delete_item_query = """
 
 
 update_item_query = """
-    UPDATE products SET quantity = $1 WHERE p
+    UPDATE products SET 
+    title=$1, details=$2, sizes=$3, comb=$4
+    WHERE channel_id = $5 AND post_id = $6
 """
 
 
@@ -48,6 +50,7 @@ fetch_items_query = """
         details, 
         post_link, 
         post_id, 
+        channel_id,
         images,
         TO_CHAR(created_at, 'YYYY/MM/DD HH:MM:SS') AS created_at 
 
