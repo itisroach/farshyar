@@ -48,4 +48,13 @@ class Database():
     async def add_products(self, *args):
         
         async with self.pool.acquire() as connection:
-            return await connection.fetch(queries.insert_item_query, *args)
+            return await connection.execute(queries.insert_item_query, *args)
+        
+
+    async def update_products(self, channel_id, message_id, *args):
+        async with self.pool.acquire() as connection:
+            print(*args, channel_id, message_id)
+            return await connection.execute(queries.update_item_query, *args, channel_id, message_id)
+        
+    
+        
