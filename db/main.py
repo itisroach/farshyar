@@ -56,5 +56,11 @@ class Database():
             print(*args, channel_id, message_id)
             return await connection.execute(queries.update_item_query, *args, channel_id, message_id)
         
-    
+    async def delete_product(self, channel_id, post_id):
+        async with self.pool.acquire() as connection:
+            return await connection.execute(queries.delete_item_query, channel_id, post_id) 
         
+
+    async def fetch_products_to_remove(self):
+        async with self.pool.acquire() as connection:
+            return await connection.fetch(queries.fetch_items_to_remove)
