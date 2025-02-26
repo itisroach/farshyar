@@ -10,6 +10,24 @@ def ReadEnvVar(name: str):
 
     return value
 
+
+# a function to remove phone numbers, links and username also it deletes some unecessary characters
+def CleanText(text):
+    text = re.sub(r'(\+?۹۸|۰|\+?98|0)[۰-۹0-9]{10}', '', text)  # Matches +98 or 0 followed by 9 and then 9 digits
+    
+    # Remove links (URLs starting with http://, https:// or www.)
+    text = re.sub(r'http[s]?://\S+|www\.\S+', '', text)
+    
+    # Remove usernames (words starting with @)
+    text = re.sub(r'@\w+', '', text)
+
+    characters = [".", "/", "\\", ",", "،", "$", "#", "@", "*", "!"]
+
+    for c in characters:
+        text = text.replace(c, "")
+
+    return text.strip()
+
 # generate a link of telegram message to be accessed 
 def GeneratePostLink(channel_username, message_id):
     link = f"https://t.me/c/{channel_username}/{message_id}"
@@ -18,7 +36,6 @@ def GeneratePostLink(channel_username, message_id):
 
 # a function to extract title and delete unecessary words from it
 def ExtractTitle(title, data):
-    
     # clean up the title
     for value in data.values():
 
@@ -43,6 +60,8 @@ def ExtractTitle(title, data):
 
 # a function to extrac details about products from the whole message
 def ExtractDescription(text, data):
+    text = CleanText(text)
+
     # clean up the description
     for value in data.values():
 
