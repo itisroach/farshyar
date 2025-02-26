@@ -28,9 +28,10 @@ async def ProcessImages(event, client, extractedWords, isAlbum):
     # check if it is multiple images 
     if isAlbum:
         # iterating through all images
+        print(event)
         for image in event.messages:
             # genearting unique file name based on ids
-            filename = f"{image.grouped_id}-{image.id}.jpg"
+            filename = f"{event.chat.id}-{image.id}.jpg"
             # uploading file locally on machine
             file_path = await client.download_media(image, f"./media/{filename}")
 
@@ -42,7 +43,7 @@ async def ProcessImages(event, client, extractedWords, isAlbum):
         photo = event.message.photo
 
         # generating file name based on photo id
-        filename = f"{photo.id}.jpg"
+        filename = f"{event.chat.id}-{event.message.id}.jpg"
         # downloading photo into the machine
         file_path = await client.download_media(photo, f"./media/{filename}")
 
@@ -73,3 +74,13 @@ async def UploadToCloud(file_path, object_name):
     except Exception as e:
         print(e)
         return None
+    
+
+async def DeleteImage(filename):
+    try:
+        print(filename)
+        print("deleting...")
+        s3.delete_object(Bucket=BUCKET_NAME, Key=filename)
+        print(f"File {filename} deleted successfully.")
+    except Exception as e:
+        print(f"Error deleting file: {e}")
