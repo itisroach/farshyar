@@ -145,7 +145,7 @@ async def Create_Data(extractedWords: list[str], images: list[str], db, event, e
         "comb": 0,
         "post_link": GeneratePostLink(chat_info.id, message_id),
         "post_id": message_id,
-        "channel_id": chat_info.id,
+        "channel_id": channel_id,
         "images": images
     }
     size = Sizes()
