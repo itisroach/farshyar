@@ -35,7 +35,7 @@ fetch_items_to_remove = """
 """
 
 delete_item_query = """
-    DELETE FROM products WHERE channel_id = $1 AND post_id = $2 
+    DELETE FROM products WHERE channel_id = $1 AND post_id = $2 RETURNING images
 """
 
 
