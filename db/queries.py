@@ -29,8 +29,13 @@ insert_item_query = """
     INSERT INTO products (title, details, sizes, comb, post_link, post_id, channel_id, images) VALUES ($1, $2, $3::jsonb, $4, $5, $6, $7, $8)
 """
 
+
+fetch_items_to_remove = """
+    SELECT (channel_id, post_id) FROM products
+"""
+
 delete_item_query = """
-    DELETE FROM products WHERE post_id = $1
+    DELETE FROM products WHERE channel_id = $1 AND post_id = $2 
 """
 
 
