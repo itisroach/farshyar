@@ -1,7 +1,7 @@
 from telethon import TelegramClient, events
 from helpers import tools
 from db.main import Database
-from helpers import messageParser
+from helpers import messageParser, messageEvents
 import asyncio
 from helpers.cloudStorage import ProcessImages
 
@@ -22,6 +22,14 @@ async def main():
     async with client:
 
         await db.init_db()
+
+
+        @client.on(events.MessageEdited())
+        async def ListenForEditedMessages(event):
+        
+            await messageEvents.MessageEdited(event, db) 
+            
+
 
         @client.on(events.NewMessage())
         async def ListenForMessages(event):
@@ -55,9 +63,7 @@ async def main():
                 asyncio.create_task(ProcessImages(event, client, matches, db, True))
 
                 
-    # starting the bot
-    await client.start()
-    await client.run_until_disconnected()
+        await client.run_until_disconnected()
 
 
 
