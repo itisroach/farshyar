@@ -16,6 +16,83 @@ def GeneratePostLink(channel_username, message_id):
 
     return link
 
+# a function to extract title and delete unecessary words from it
+def ExtractTitle(title, data):
+    
+    # clean up the title
+    for value in data.values():
+
+        title = title.replace(str(value), "")
+        
+    
+    if "شانه" in title or re.search(r"(?<!\S)[\d\u06F0-\u06F9]*ش|[\d\u06F0-\u06F9]ش(?!\S)", title) is not None or title in ["1500", "1000", "700", "1200", "۱۲۰۰", "۱۰۰۰", "۷۰۰", "۱۵۰۰"]:
+        comb = EnglishToPersianNumbers(data["comb"])
+        if "شانه" in title:
+            title = title.replace("شانه", "")
+        else:
+            title = title.replace("ش", "")
+
+        title = title.replace(comb, "")
+        # for english numbers in text
+        title = title.replace(str(data["comb"]), "")
+
+    if "۱۰۰٪" not in title and "اکریلیک" not in title and "اکرلیک" not in title:
+        title += " ۱۰۰٪ اکریلیک " 
+
+    return title.strip().replace("  ", " ")
+
+# a function to extrac details about products from the whole message
+def ExtractDescription(text, data):
+    # clean up the description
+    for value in data.values():
+
+        text = text.replace(str(value), "")
+        
+    
+    if "شانه" in text or re.search(r"(?<!\S)[\d\u06F0-\u06F9]*ش|[\d\u06F0-\u06F9]ش(?!\S)", text) is not None or text in ["1500", "1000", "700", "1200", "۱۲۰۰", "۱۰۰۰", "۷۰۰", "۱۵۰۰"]:
+        comb = EnglishToPersianNumbers(data["comb"])
+        if "شانه" in text:
+            text = text.replace("شانه", "")
+        else:
+            text = text.replace("ش", "")
+
+        text = text.replace(comb, "")
+        # for english numbers in text
+        text = text.replace(str(data["comb"]), "")
+
+    text = text.replace("متری", "")
+    text = text.replace("متر", "")
+
+    for size in data["sizes"]:
+        text = text.replace(EnglishToPersianNumbers(size[0]), "")
+        # for english numbers in text
+        text = text.replace(str(size[0]), "")
+
+        text = text.replace(EnglishToPersianNumbers(size[1]), "")
+        # for english numbers in text
+        text = text.replace(str(size[1]), "")
+
+    # checks if the نخته is in the match and if it is it will be considered as quantity in Sizes class
+    if "تخته" in text or re.search(r"(?<!\S)[\d\u06F0-\u06F9]*ت|[\d\u06F0-\u06F9]ت(?!\S)", text) is not None:
+        if "تخته" in text:
+            text = text.replace("تخته", "")
+        else:
+            text = text.replace("ت", "")
+
+
+
+    text = text.strip().replace("  ", " ")
+    return text.replace("\n", " ")
+
+# a function to simply convert English digits to Persian digits
+def EnglishToPersianNumbers(number):
+    persian_digits = "۰۱۲۳۴۵۶۷۸۹"
+    english_digits = "0123456789"
+
+    dictionary = str.maketrans(english_digits, persian_digits)
+    
+    return str(number).translate(dictionary)
+
 # a data type that can generate a list of tuples that can store tuples like this (size, quantity) this is for knowing how many stocks we have in each size
 class Sizes():
     _instance = None
@@ -61,7 +138,7 @@ async def Create_Data(extractedWords: list[str], images: list[str], db, event):
     message_id = event.original_update.message.id
 
     data = {
-        "title": extractedWords[-1],
+        "title": "",
         "details": "",
         "sizes": [],
         "comb": 0,
@@ -74,15 +151,9 @@ async def Create_Data(extractedWords: list[str], images: list[str], db, event):
 
     for idx, word in enumerate(extractedWords):
         
-        # checking if the word that it reaches is not the title and if it is not the title it removes every other match in the title 
-        if idx != len(extractedWords)-1:
-            extractedWords[-1] = extractedWords[-1].replace(word, "") 
-            data["title"] = extractedWords[-1].strip().replace(" ", " ")
-
-        # if theres code in title it will remove it
-        if "کد" in word:    
-            data["title"] = re.sub(r"کد\s+\S+", "", extractedWords[-1]).strip()
-            data["title"] = data["title"].replace("  " , " ")
+        # it does not read and apply below code to the title
+        if idx == len(extractedWords)-1:
+            continue
 
         # checks if the نخته is in the match and if it is it will be considered as quantity in Sizes class
         elif "تخته" in word or re.search(r"(?<!\S)[\d\u06F0-\u06F9]*ت|[\d\u06F0-\u06F9]ت(?!\S)", word) is not None:
@@ -108,15 +179,21 @@ async def Create_Data(extractedWords: list[str], images: list[str], db, event):
             size.add_data(length, 0)
 
 
-    data["title"] = f"{data["title"]} ۱۰۰٪ اکریلیک"
+    data["sizes"] = size.get_sizes()
+
+    data["title"] = ExtractTitle(extractedWords[-1], data)
+    data["details"] = ExtractDescription(event.text, data).replace("فرش", "")
+
+    if (not data["comb"] and not data["title"]) or len(data['sizes']) == 0:
+        return
 
     # convert the Size class output to json so it can be stored in database
-    data["sizes"] = (json.dumps(size.get_sizes()))
+    data["sizes"] = json.dumps(data["sizes"])
 
     # destory the class intance for further use to bed intialized
     size.destroy()
 
-    
+
     # inserting product to database
     await db.add_products(*data.values())
 
