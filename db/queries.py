@@ -31,7 +31,7 @@ insert_item_query = """
 
 
 fetch_items_to_remove = """
-    SELECT (channel_id, post_id) FROM products
+    SELECT channel_id, post_id FROM products
 """
 
 delete_item_query = """
