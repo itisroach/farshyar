@@ -34,32 +34,9 @@ def GeneratePostLink(channel_username, message_id):
 
     return link
 
-# a function to extract title and delete unecessary words from it
-def ExtractTitle(title, data):
-    # clean up the title
-    for value in data.values():
-
-        title = title.replace(str(value), "")
-        
-    
-    if "شانه" in title or re.search(r"(?<!\S)[\d\u06F0-\u06F9]*ش|[\d\u06F0-\u06F9]ش(?!\S)", title) is not None or title in ["1500", "1000", "700", "1200", "۱۲۰۰", "۱۰۰۰", "۷۰۰", "۱۵۰۰"]:
-        comb = EnglishToPersianNumbers(data["comb"])
-        if "شانه" in title:
-            title = title.replace("شانه", "")
-        else:
-            title = title.replace("ش", "")
-
-        title = title.replace(comb, "")
-        # for english numbers in text
-        title = title.replace(str(data["comb"]), "")
-
-    if "۱۰۰٪" not in title and "اکریلیک" not in title and "اکرلیک" not in title:
-        title += " ۱۰۰٪ اکریلیک " 
-
-    return title.strip().replace("  ", " ")
 
 # a function to extrac details about products from the whole message
-def ExtractDescription(text, data):
+def ExtractWithOutDuplicateInfo(text, data):
     text = CleanText(text)
 
     # clean up the description
@@ -99,8 +76,11 @@ def ExtractDescription(text, data):
             text = text.replace("ت", "")
 
 
-
+    text = text.replace("موجود است", "")
+    text = text.replace("موجود میباشد", "")
+    text = text.replace("موجود می باشد", "")
     text = text.strip().replace("  ", " ")
+
     return text.replace("\n", " ")
 
 # a function to simply convert English digits to Persian digits
@@ -201,8 +181,8 @@ async def Create_Data(extractedWords: list[str], images: list[str], db, event, e
 
     data["sizes"] = size.get_sizes()
 
-    data["title"] = ExtractTitle(extractedWords[-1], data)
-    data["details"] = ExtractDescription(event.text, data).replace("فرش", "")
+    data["title"] = ExtractWithOutDuplicateInfo(extractedWords[-1], data)
+    data["details"] = ExtractWithOutDuplicateInfo(event.text, data).replace("فرش", "")
 
     if (not data["comb"] and not data["title"]) or len(data['sizes']) == 0:
         return
