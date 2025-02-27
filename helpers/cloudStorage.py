@@ -3,6 +3,7 @@ import asyncio
 import os
 from db.main import Database
 from .tools import ReadEnvVar, Create_Data
+import logging
 
 # cloud credentials
 CLOUD_ENDPOINT   = ReadEnvVar("CLOUD_ENDPOINT")
@@ -28,7 +29,6 @@ async def ProcessImages(event, client, extractedWords, isAlbum):
     # check if it is multiple images 
     if isAlbum:
         # iterating through all images
-        print(event)
         for image in event.messages:
             # genearting unique file name based on ids
             filename = f"{event.chat.id}-{image.id}.jpg"
@@ -72,15 +72,13 @@ async def UploadToCloud(file_path, object_name):
         return f"https://{BUCKET_NAME}.s3.ir-thr-at1.arvanstorage.ir/{object_name}"
     
     except Exception as e:
-        print(e)
+        logging.error(f"Error uploading file: {e}")
         return None
     
 
 async def DeleteImage(filename):
     try:
-        print(filename)
-        print("deleting...")
         s3.delete_object(Bucket=BUCKET_NAME, Key=filename)
-        print(f"File {filename} deleted successfully.")
+        
     except Exception as e:
-        print(f"Error deleting file: {e}")
+        logging.error(f"Error deleting file: {e}")

@@ -5,7 +5,7 @@ from . import tools
 def ParseMessage(message: str):
 
     message = tools.CleanText(message)
-    print(message)
+
 
     pattern = r"(\d{4}\s?شانه|\d{3}\s?شانه|\d+\s?ش|\d{1,2}\s?ت|[\d]+(?:\s?متر|متری|متراژ)?|کد\s?\d+|\d+)"
     title_pattern = r"^(.*)"
@@ -16,7 +16,7 @@ def ParseMessage(message: str):
 
     matches.append(foundTitle[0])
 
-    print("matches",matches)
+    
     
 
     return matches
