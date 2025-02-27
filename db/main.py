@@ -1,14 +1,14 @@
-from helpers import tools
+from helpers import utils
 import asyncpg
 import sys
 from . import queries
 
 DBConfig = {
-    "user": tools.ReadEnvVar("DB_USER"),
-    "password": tools.ReadEnvVar("DB_PASS"),
-    "host": tools.ReadEnvVar("DB_HOST"),
-    "database": tools.ReadEnvVar("DB_NAME"),
-    "port": tools.ReadEnvVar("DB_PORT"),
+    "user": utils.ReadEnvVar("DB_USER"),
+    "password": utils.ReadEnvVar("DB_PASS"),
+    "host": utils.ReadEnvVar("DB_HOST"),
+    "database": utils.ReadEnvVar("DB_NAME"),
+    "port": utils.ReadEnvVar("DB_PORT"),
     "server_settings": {"client_encoding": "UTF8"}
 }
 

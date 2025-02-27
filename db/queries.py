@@ -2,16 +2,17 @@
 
 create_table_query = """
     CREATE TABLE IF NOT EXISTS products (
-        id          SERIAL PRIMARY KEY,
-        title       VARCHAR(256) NOT NULL,
-        sizes       JSONB NOT NULL,
-        comb        INT NOT NULL,
-        details     TEXT,
-        post_link   TEXT NOT NULL,
-        post_id     TEXT NOT NULL,
-        channel_id  TEXT NOT NULL,
-        images      TEXT[],
-        created_at  TIMESTAMP DEFAULT current_timestamp
+        id               SERIAL PRIMARY KEY,
+        title            VARCHAR(256) NOT NULL,
+        sizes            JSONB NOT NULL,
+        comb             INT NOT NULL,
+        details          TEXT,
+        post_link        TEXT NOT NULL,
+        post_id          TEXT NOT NULL,
+        channel_id       TEXT NOT NULL,
+        images           TEXT[],
+        channel_posts_id INT[],
+        created_at       TIMESTAMP DEFAULT current_timestamp
     )
 """
 
@@ -26,12 +27,12 @@ create_images_table_query = """
 
 # the sizes field represent the size and quantity of each size like this [(size, quantity), ...]
 insert_item_query = """
-    INSERT INTO products (title, details, sizes, comb, post_link, post_id, channel_id, images) VALUES ($1, $2, $3::jsonb, $4, $5, $6, $7, $8)
+    INSERT INTO products (title, details, sizes, comb, post_link, post_id, channel_id, images, channel_posts_id) VALUES ($1, $2, $3::jsonb, $4, $5, $6, $7, $8, $9)
 """
 
 
 fetch_items_to_remove = """
-    SELECT channel_id, post_id FROM products
+    SELECT channel_id, post_id, channel_posts_id FROM products
 """
 
 delete_item_query = """
