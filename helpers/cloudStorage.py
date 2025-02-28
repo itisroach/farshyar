@@ -2,7 +2,7 @@ import boto3
 import asyncio
 import os
 from db.main import Database
-from .utils import ReadEnvVar, SendToChannel
+from .utils import ReadEnvVar, ChannelMessage
 import logging
 
 # cloud credentials
@@ -66,7 +66,10 @@ async def ProcessImages(event, client, data, isAlbum):
 
     # sending message to channel
     data["images"] = paths
-    message_ids = await SendToChannel(client, data)
+
+    channel_message = ChannelMessage(client, data)
+
+    message_ids = await channel_message.SendToChannel()
     # adding post ids in database so it can be accessable 
     data["channel_posts_id"] = message_ids
 
