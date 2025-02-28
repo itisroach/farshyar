@@ -2,13 +2,9 @@ from dotenv import load_dotenv
 import os
 import json
 import re
-
-load_dotenv()
-
-def ReadEnvVar(name: str):
-    value = os.getenv(name)
-
-    return value
+from telethon.types import Message
+from .utils import ChannelMessage
+from .cloudStorage import ProcessImages
 
 
 # a function to remove phone numbers, links and username also it deletes some unecessary characters
@@ -36,7 +32,7 @@ def GeneratePostLink(channel_username, message_id):
 
 
 # a function to extrac details about products from the whole message
-def ExtractWithOutDuplicateInfo(text, data):
+def ExtractWithoutDuplicateInfo(text, data):
     text = CleanText(text)
 
     # clean up the description
@@ -50,7 +46,7 @@ def ExtractWithOutDuplicateInfo(text, data):
         if "شانه" in text:
             text = text.replace("شانه", "")
         else:
-            text = text.replace("ش", "")
+            text = re.sub(r"(?<!\S)[\d\u06F0-\u06F9]*ش|[\d\u06F0-\u06F9]ش(?!\S)", "", text)
 
         text = text.replace(comb, "")
         # for english numbers in text
@@ -73,9 +69,9 @@ def ExtractWithOutDuplicateInfo(text, data):
         if "تخته" in text:
             text = text.replace("تخته", "")
         else:
-            text = text.replace("ت", "")
+            text = re.sub(r"(?<!\S)[\d\u06F0-\u06F9]*ت|[\d\u06F0-\u06F9]ت(?!\S)", "", text)
 
-
+    text = text.replace("فرش", "")
     text = text.replace("موجود است", "")
     text = text.replace("موجود میباشد", "")
     text = text.replace("موجود می باشد", "")
@@ -128,13 +124,23 @@ class Sizes():
 
 
 # this simply returns a python dict containing products information that is represented for database fields 
-async def Create_Data(extractedWords: list[str], images: list[str], db, event, edited=False):
-    # getting information about chat
-    chat_info = await event.get_chat()
+async def Create_Data(client, extractedWords: list[str], db, event, edited=False, isAlbum=None):
+    
+    if event is not Message:
+        # getting information about chat
+        chat_info = await event.get_chat()
+        channel_id = str(chat_info.id)
+
+    else:
+        channel_id = str(event.chat.id)
 
     # getting the message id
-    message_id = str(event.original_update.message.id)
-    channel_id = str(chat_info.id)
+    message_id = None 
+    try:
+        message_id = str(event.original_update.message.id)
+    except Exception as e:
+        message_id = str(event.id)
+
 
 
     data = {
@@ -142,10 +148,10 @@ async def Create_Data(extractedWords: list[str], images: list[str], db, event, e
         "details": "",
         "sizes": [],
         "comb": 0,
-        "post_link": GeneratePostLink(chat_info.id, message_id),
+        "post_link": GeneratePostLink(channel_id, message_id),
         "post_id": message_id,
         "channel_id": channel_id,
-        "images": images
+        "images": None
     }
     size = Sizes()
 
@@ -181,8 +187,8 @@ async def Create_Data(extractedWords: list[str], images: list[str], db, event, e
 
     data["sizes"] = size.get_sizes()
 
-    data["title"] = ExtractWithOutDuplicateInfo(extractedWords[-1], data)
-    data["details"] = ExtractWithOutDuplicateInfo(event.text, data).replace("فرش", "")
+    data["title"] = ExtractWithoutDuplicateInfo(extractedWords[-1], data)
+    data["details"] = ExtractWithoutDuplicateInfo(event.text, data).replace("فرش", "")
 
     if (not data["comb"] and not data["title"]) or len(data['sizes']) == 0:
         return
@@ -196,18 +202,30 @@ async def Create_Data(extractedWords: list[str], images: list[str], db, event, e
 
     if edited == False:
         # inserting product to database
+        if isAlbum is not None:
+
+            images = await ProcessImages(event, client, data, isAlbum)
+            data["images"] = images       
+        else:
+            channel_message = ChannelMessage(client, data)
+            data["channel_posts_id"] = await channel_message.SendToChannel()
+        
         await db.add_products(*data.values())
     else:
+    
         data = {
             "title": data["title"],
             "details": data["details"],
             "sizes": data["sizes"],
             "comb": data["comb"]
         }
-
+    
         if (not data["comb"] and not data["title"]) or len(data['sizes']) == 0:
             return
 
 
-        await db.update_products(channel_id,message_id ,*data.values())
-    
+        channel_posts_id = await db.update_products(channel_id, message_id ,*data.values())
+        # updating message in the main chanell
+        message_id = channel_posts_id[0][0][0]
+        channel_message = ChannelMessage(client, data)
+        await channel_message.EditChannelMessage(message_id)    
