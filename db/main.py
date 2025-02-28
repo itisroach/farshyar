@@ -53,7 +53,7 @@ class Database():
 
     async def update_products(self, channel_id, message_id, *args):
         async with self.pool.acquire() as connection:
-            return await connection.execute(queries.update_item_query, *args, channel_id, message_id)
+            return await connection.fetch(queries.update_item_query, *args, channel_id, message_id)
         
     async def delete_product(self, channel_id, post_id):
         async with self.pool.acquire() as connection:

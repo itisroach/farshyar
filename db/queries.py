@@ -44,6 +44,7 @@ update_item_query = """
     UPDATE products SET 
     title=$1, details=$2, sizes=$3, comb=$4
     WHERE channel_id = $5 AND post_id = $6
+    RETURNING channel_posts_id
 """
 
 
