@@ -14,7 +14,7 @@ def ReadEnvVar(name: str):
     return value
 
 
-CHANNEL_USERNAME=ReadEnvVar("CHANNEL_USERNMAE")
+CHANNEL_USERNAME = ReadEnvVar("CHANNEL_USERNAME")
 
 
 # reading username of channels in file
@@ -30,16 +30,29 @@ def ReadChannels(filepath: str):
 
 
 
-async def SendToChannel(client, data):
-    caption = f"{data["title"]}\n {data["comb"]} شانه {data["details"]}"
-    sizes = json.loads(data["sizes"])
-    for size in sizes:
-        caption += f"\n {size[0]} متری {size[1]} تخته"
+class ChannelMessage():
+
+    def __init__(self, client, data):
+        self.client  = client
+        self.data    = data
+        self.caption = f"{data["title"]}\n {data["comb"]} شانه\n {data["details"]}"
+        # we convert a json object to a python object
+        sizes = json.loads(data["sizes"])
+        for size in sizes:
+            self.caption += f"\n {size[0]} متری {size[1]} تخته"
+
+    async def SendToChannel(self):
+        # checks if images is an ablum or not
+        if type(self.data["images"]) is list:
+            # it will return message id so we can store it in database
+            messages = await self.client.send_file(CHANNEL_USERNAME, self.data["images"], caption=self.caption, force_document=False)
+            return [message.id for message in messages]
+        else:
+            message = await self.client.send_message(CHANNEL_USERNAME, self.caption)
+            return [message.id]
+    
 
 
-    if type(data["images"]) is list:
-        messages = await client.send_file(CHANNEL_USERNAME, data["images"], caption=caption, force_document=False)
-        return [message.id for message in messages]
-    else:
-        message = await client.send_message(CHANNEL_USERNAME, caption)
-        return message.id
+    async def EditChannelMessage(self, message_id):
+        
+        await self.client.edit_message(CHANNEL_USERNAME, message_id, self.caption)
