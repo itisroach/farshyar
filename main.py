@@ -1,18 +1,21 @@
-from telethon import TelegramClient, events
-from helpers import tools
+from telethon import TelegramClient, events, types
+from helpers import utils
 from db.main import Database
 from helpers import messageParser
 from helpers.cloudStorage import DeleteImage
 import asyncio
+from helpers import tools
 import pytz
+from helpers import extractOldMessages
 from apscheduler.schedulers.asyncio import AsyncIOScheduler 
-from helpers.cloudStorage import ProcessImages
+from helpers import utils
+
 
 # telegram credentials
-API_ID    = tools.ReadEnvVar("API_ID")
-API_HASH  = tools.ReadEnvVar("API_HASH")
-BOT_TOKEN = tools.ReadEnvVar("BOT_TOKEN")
-SESSION_NAME = tools.ReadEnvVar("SESSION_NAME")
+API_ID    = utils.ReadEnvVar("API_ID")
+API_HASH  = utils.ReadEnvVar("API_HASH")
+BOT_TOKEN = utils.ReadEnvVar("BOT_TOKEN")
+SESSION_NAME = utils.ReadEnvVar("SESSION_NAME")
 
 # an instance of telegram client
 client = TelegramClient(session=SESSION_NAME, api_id=API_ID, api_hash=API_HASH)
@@ -33,6 +36,7 @@ async def DeletProduct():
     for product in products:
         channel_id = int(product["channel_id"])
         message_id = int(product["post_id"])
+        
 
         # check if the message exists in channel
         message_found = await client.get_messages(channel_id, ids=message_id)
@@ -41,8 +45,14 @@ async def DeletProduct():
         if message_found is None:
             channel_id = str(channel_id)
             message_id = str(message_id)
+            channel_posts_id = product["channel_posts_id"]
+
             # deleting the product related to message (the query returns images list)
             record = await db.delete_product(channel_id, message_id)
+
+            # deletes posts that has been published in the main channel 
+            await client.delete_messages(utils.CHANNEL_USERNAME, channel_posts_id)
+
             # check if records variable already not got any value
             if records is None:
                 records = record[0]["images"]
@@ -50,6 +60,9 @@ async def DeletProduct():
                 # add list of urls to it so it does not need to be list in list the result is like [url] + [newurl] = [url, newurl]
                 records += record[0]["images"]
         
+    if records is None:
+        return
+    
     # deleting image from cloud
     for image in records:
         filename = image.split("/")[-1]
@@ -76,13 +89,12 @@ async def main():
         
             matches = messageParser.ParseMessage(event.text)
 
-            await tools.Create_Data(matches, None, db, event, True)
+            await tools.Create_Data(client, matches, db, event, True)
             
-            
-
-
         @client.on(events.NewMessage(chats=["t3362"]))
         async def ListenForMessages(event):
+            if "روتین" in event.text:
+                return
             # if message contains mutiple images goes out of function
             if event.message.grouped_id:
                 return
@@ -96,11 +108,11 @@ async def main():
                 # checks if message contains only one image 
                 if event.message.photo:
                     # runs this procces in background
-                    asyncio.create_task(ProcessImages(event, client, matches, False))
+                    asyncio.create_task(tools.Create_Data(client ,matches, db, event, False, False))
 
                 # add products to database if we don't have image
                 else:
-                    await tools.Create_Data(matches, None, db, event)
+                    await tools.Create_Data(client, matches, db, event, False, None)
 
         # this event happens when multiple images sent
         @client.on(events.Album(chats=["t3362"]))
@@ -110,7 +122,7 @@ async def main():
                 # finding matches in text
                 matches = messageParser.ParseMessage(event.text)
                 # uploading file to cloud in the background
-                asyncio.create_task(ProcessImages(event, client, matches, True))
+                asyncio.create_task(tools.Create_Data(client, matches, db, event, False, True))
 
                 
         await client.run_until_disconnected()
