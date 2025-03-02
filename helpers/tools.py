@@ -1,10 +1,10 @@
-from dotenv import load_dotenv
+import asyncio
 import os
 import json
 import re
 from telethon.types import Message
 from .utils import ChannelMessage
-from .cloudStorage import ProcessImages
+from .media import ProcessImages
 
 
 # a function to remove phone numbers, links and username also it deletes some unecessary characters
@@ -17,7 +17,7 @@ def CleanText(text):
     # Remove usernames (words starting with @)
     text = re.sub(r'@\w+', '', text)
 
-    characters = [".", "/", "\\", ",", "،", "$", "#", "@", "*", "!"]
+    characters = [".", "/", "\\", ",", "،", "$", "#", "@", "*", "!", "٫"]
 
     for c in characters:
         text = text.replace(c, "")
@@ -29,7 +29,6 @@ def GeneratePostLink(channel_username, message_id):
     link = f"https://t.me/c/{channel_username}/{message_id}"
 
     return link
-
 
 # a function to extrac details about products from the whole message
 def ExtractWithoutDuplicateInfo(text, data):
@@ -78,6 +77,7 @@ def ExtractWithoutDuplicateInfo(text, data):
     text = text.strip().replace("  ", " ")
 
     return text.replace("\n", " ")
+
 
 # a function to simply convert English digits to Persian digits
 def EnglishToPersianNumbers(number):
@@ -150,8 +150,7 @@ async def Create_Data(client, extractedWords: list[str], db, event, edited=False
         "comb": 0,
         "post_link": GeneratePostLink(channel_id, message_id),
         "post_id": message_id,
-        "channel_id": channel_id,
-        "images": None
+        "channel_id": channel_id
     }
     size = Sizes()
 
@@ -201,16 +200,19 @@ async def Create_Data(client, extractedWords: list[str], db, event, edited=False
 
 
     if edited == False:
+        urls = None
         # inserting product to database
         if isAlbum is not None:
 
             images = await ProcessImages(event, client, data, isAlbum)
-            data["images"] = images       
+            urls = images   
         else:
             channel_message = ChannelMessage(client, data)
-            data["channel_posts_id"] = await channel_message.SendToChannel()
-        
-        await db.add_products(*data.values())
+            data["channel_posts_id"] = await channel_message.SendToChannel(images=None)
+    
+        inserted_id = await db.add_products(*data.values())
+        if urls is not None:
+            await db.add_images(inserted_id, urls)
     else:
     
         data = {
@@ -226,6 +228,7 @@ async def Create_Data(client, extractedWords: list[str], db, event, edited=False
 
         channel_posts_id = await db.update_products(channel_id, message_id ,*data.values())
         # updating message in the main chanell
-        message_id = channel_posts_id[0][0][0]
+        message_id = json.loads(channel_posts_id[0]["channel_posts_id"])
+        message_id = message_id[0]
         channel_message = ChannelMessage(client, data)
         await channel_message.EditChannelMessage(message_id)    
