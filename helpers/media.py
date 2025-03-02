@@ -1,5 +1,3 @@
-import asyncio
-import os
 from db.main import Database
 from .utils import ChannelMessage
 
@@ -38,18 +36,12 @@ async def ProcessImages(event, client, data, isAlbum):
         paths.append(file_path)        
 
     
-
-    # sending message to channel
-    data["images"] = paths
-
+    # a class for accessing channel and publishing posts in it
     channel_message = ChannelMessage(client, data)
+    message_ids = await channel_message.SendToChannel(paths)
 
-    message_ids = await channel_message.SendToChannel()
     # adding post ids in database so it can be accessable 
     data["channel_posts_id"] = message_ids
 
     return paths
 
-def RemoveImages(filepaths):
-    for path in  filepaths:
-        os.remove(path)
