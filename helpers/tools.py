@@ -189,7 +189,10 @@ async def Create_Data(client, extractedWords: list[str], db, event, edited=False
     data["title"] = ExtractWithoutDuplicateInfo(extractedWords[-1], data)
     data["details"] = ExtractWithoutDuplicateInfo(event.text, data).replace("فرش", "")
 
-    if (not data["comb"] and not data["title"]) or len(data['sizes']) == 0:
+    if not data["title"]:
+        data["title"] = f"فرش {data["comb"]} شانه"
+
+    if not data["comb"] or data["comb"] == 0 or len(data['sizes']) == 0:
         return
 
     # convert the Size class output to json so it can be stored in database
