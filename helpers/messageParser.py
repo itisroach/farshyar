@@ -4,8 +4,6 @@ from . import tools
 # finding matches of important information that we need
 def ParseMessage(message: str):
 
-    
-
     message = tools.CleanText(message)
 
 
@@ -18,8 +16,6 @@ def ParseMessage(message: str):
 
     matches.append(foundTitle[0])
 
-    
-    
 
     return matches
     
