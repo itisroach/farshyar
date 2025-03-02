@@ -1,6 +1,6 @@
 import logging
-import json
 import os
+import json
 from dotenv import load_dotenv
 
 
@@ -30,7 +30,7 @@ def ReadChannels(filepath: str):
 
 
 
-class ChannelMessage():
+class ChannelMessage:
 
     def __init__(self, client, data):
         self.client  = client
@@ -41,15 +41,15 @@ class ChannelMessage():
         for size in sizes:
             self.caption += f"\n {size[0]} متری {size[1]} تخته"
 
-    async def SendToChannel(self):
+    async def SendToChannel(self, images):
         # checks if images is an ablum or not
-        if type(self.data["images"]) is list:
+        if type(images) is list:
             # it will return message id so we can store it in database
-            messages = await self.client.send_file(CHANNEL_USERNAME, self.data["images"], caption=self.caption, force_document=False)
-            return [message.id for message in messages]
+            messages = await self.client.send_file(CHANNEL_USERNAME, images, caption=self.caption, force_document=False)
+            return json.dumps([message.id for message in messages])
         else:
             message = await self.client.send_message(CHANNEL_USERNAME, self.caption)
-            return [message.id]
+            return json.dumps([message.id])
     
 
 
