@@ -1,15 +1,15 @@
 from helpers import utils
-import asyncpg
+import aiomysql
 import sys
 from . import queries
 
 DBConfig = {
-    "user": utils.ReadEnvVar("DB_USER"),
+    "user": "root",
     "password": utils.ReadEnvVar("DB_PASS"),
     "host": utils.ReadEnvVar("DB_HOST"),
-    "database": utils.ReadEnvVar("DB_NAME"),
-    "port": utils.ReadEnvVar("DB_PORT"),
-    "server_settings": {"client_encoding": "UTF8"}
+    "db": utils.ReadEnvVar("DB_NAME"),
+    "minsize": 1,
+    "maxsize": 30
 }
 
 
@@ -29,37 +29,84 @@ class Database():
         if self._initialized:
             return  # Prevent re-initialization
         try:
-            self.pool = await asyncpg.create_pool(**DBConfig)
+            self.pool = await aiomysql.create_pool(**DBConfig)
             self._initialized = True
 
         except Exception as e:
             sys.exit(f"Database connection failed: {e}")
 
         # Creating table on database connection
-        await self.pool.execute(queries.create_table_query)
+        await self.create_table()
+
+    async def create_table(self):
+        async with self.pool.acquire() as connection:
+            async with connection.cursor() as cur:
+                await cur.execute(queries.create_table_query)
+                await cur.execute(queries.create_images_table_query)
+                await connection.commit()
 
     async def fetch_products(self):
         # Fetch products from database
         if self.pool is None:
             raise RuntimeError("Database not initialized. Call init_db() first.")
         async with self.pool.acquire() as connection:
-            return await connection.fetch(queries.fetch_items_query)
+            async with connection.cursor(aiomysql.DictCursor) as cur:
+                await cur.execute(queries.fetch_items_query)
+                return await cur.fetchall()
         
     async def add_products(self, *args):
         
         async with self.pool.acquire() as connection:
-            return await connection.execute(queries.insert_item_query, *args)
-        
+            async with connection.cursor() as cur:
+                await cur.execute(queries.insert_item_query, args)
+
+                inserted_id = cur.lastrowid
+
+                await connection.commit()
+
+                return inserted_id
 
     async def update_products(self, channel_id, message_id, *args):
         async with self.pool.acquire() as connection:
-            return await connection.fetch(queries.update_item_query, *args, channel_id, message_id)
+            async with connection.cursor(aiomysql.DictCursor) as cur:
+                await cur.execute(queries.update_item_query, (*args, channel_id, message_id))              
+                await connection.commit()
+                await cur.execute(queries.returning_update_query, (channel_id, message_id))
+                result = await cur.fetchall()
+
+                return result 
         
     async def delete_product(self, channel_id, post_id):
         async with self.pool.acquire() as connection:
-            return await connection.fetch(queries.delete_item_query, channel_id, post_id) 
-        
+            async with connection.cursor(aiomysql.DictCursor) as cur:
+                await cur.execute(queries.fetch_images_to_remove, (post_id, channel_id))
+
+                result = []
+
+                for row in await cur.fetchall():
+                    if "url" in row:
+                        result.append(row["url"])
+                    else:
+                        result = None
+
+                await cur.execute(queries.delete_item_query, (channel_id, post_id)) 
+                await connection.commit()
+                return result
 
     async def fetch_products_to_remove(self):
         async with self.pool.acquire() as connection:
-            return await connection.fetch(queries.fetch_items_to_remove)
+            async with connection.cursor(aiomysql.DictCursor) as cur:
+                await cur.execute(queries.fetch_items_to_remove)
+                return await cur.fetchall()
+        
+
+    async def add_images(self, inserted_id, images: list):
+        async with self.pool.acquire() as connection:
+            async with connection.cursor() as cur:
+                for image in images:
+                    await cur.execute(queries.insert_images_query, (inserted_id, image))
+                await connection.commit()
+
+    async def close_pool(self):
+        self.pool.close()
+        await self.pool.wait_closed()

@@ -1,63 +1,73 @@
 create_table_query = """
     CREATE TABLE IF NOT EXISTS products (
-        id               SERIAL PRIMARY KEY,
+        id               INT AUTO_INCREMENT PRIMARY KEY,
         title            VARCHAR(256) NOT NULL,
-        sizes            JSONB NOT NULL,
+        sizes            JSON NOT NULL,
         comb             INT NOT NULL,
         details          TEXT,
         post_link        TEXT NOT NULL,
-        post_id          TEXT NOT NULL,
-        channel_id       TEXT NOT NULL,
-        images           TEXT[],
-        channel_posts_id INT[],
-        created_at       TIMESTAMP DEFAULT current_timestamp
-    )
+        post_id          VARCHAR(100) NOT NULL,
+        channel_id       VARCHAR(100) NOT NULL,
+        channel_posts_id JSON,
+        created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
 """
 
 create_images_table_query = """
-    CREATE TABLE IF NOT EXISTS images (
-        id       SERIAL PRIMARY KEY,
-        url      TEXT NOT NULL,
-        product  INT NOT NULL,
-        CONSTRAINT fk_product FOREIGN KEY(product) REFERENCES products(id)
-    )
+    CREATE TABLE IF NOT EXISTS images(
+        id          INT PRIMARY KEY AUTO_INCREMENT,
+        product_id  INT,
+        url         TEXT NOT NULL,
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+    );
 """
 
-# the sizes field represent the size and quantity of each size like this [(size, quantity), ...]
+
 insert_item_query = """
-    INSERT INTO products (title, details, sizes, comb, post_link, post_id, channel_id, images, channel_posts_id) VALUES ($1, $2, $3::jsonb, $4, $5, $6, $7, $8, $9)
+    INSERT INTO products (title, details, sizes, comb, post_link, post_id, channel_id, channel_posts_id)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
 """
 
+insert_images_query = """
+    INSERT INTO images (product_id, url) VALUES (%s, %s);
+"""
 
 fetch_items_to_remove = """
-    SELECT channel_id, post_id, channel_posts_id FROM products
+    SELECT channel_id, post_id, channel_posts_id FROM products;
+"""
+
+
+fetch_images_to_remove = """
+    SELECT url FROM images WHERE product_id = (SELECT id FROM products WHERE post_id = %s AND channel_id = %s)
 """
 
 delete_item_query = """
-    DELETE FROM products WHERE channel_id = $1 AND post_id = $2 RETURNING images
+    DELETE FROM products WHERE channel_id = %s AND post_id = %s;
 """
-
 
 update_item_query = """
     UPDATE products SET 
-    title=$1, details=$2, sizes=$3, comb=$4
-    WHERE channel_id = $5 AND post_id = $6
-    RETURNING channel_posts_id
+    title=%s, details=%s, sizes=%s, comb=%s
+    WHERE channel_id = %s AND post_id = %s;
 """
 
+returning_update_query = """
+    SELECT channel_posts_id FROM products WHERE channel_id = %s AND post_id = %s
+"""
 
 fetch_items_query = """
     SELECT 
-        id,
-        title, 
-        sizes, 
-        comb, 
-        details, 
-        post_link, 
-        post_id, 
-        channel_id,
-        images,
-        TO_CHAR(created_at, 'YYYY/MM/DD HH:MM:SS') AS created_at 
-
-    FROM products
+        p.id,
+        p.title, 
+        p.sizes, 
+        p.comb,
+        p.details, 
+        p.post_link, 
+        p.post_id, 
+        p.channel_id,
+        JSON_ARRAYAGG(i.url) AS images,
+        DATE_FORMAT(p.created_at, '%Y/%m/%d %H:%i:%s') AS created_at 
+    FROM products p
+    LEFT JOIN images i ON p.id = i.product_id
+    GROUP BY p.id;
 """
