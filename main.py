@@ -2,10 +2,11 @@ from telethon import TelegramClient, events, types
 from helpers import utils
 from db.main import Database
 from helpers import messageParser
-from helpers.cloudStorage import DeleteImage
 import asyncio
+import os
 from helpers import tools
 import pytz
+import json
 from helpers import extractOldMessages
 from apscheduler.schedulers.asyncio import AsyncIOScheduler 
 from helpers import utils
@@ -25,7 +26,7 @@ client = TelegramClient(session=SESSION_NAME, api_id=API_ID, api_hash=API_HASH)
 db = Database()
 
 # a function that removes records from database that are not in channels
-async def DeletProduct():
+async def DeleteProduct():
     # getting all product post and channel ids to check for existance in channels
     products = await db.fetch_products_to_remove()
 
@@ -45,7 +46,7 @@ async def DeletProduct():
         if message_found is None:
             channel_id = str(channel_id)
             message_id = str(message_id)
-            channel_posts_id = product["channel_posts_id"]
+            channel_posts_id = json.loads(product["channel_posts_id"])
 
             # deleting the product related to message (the query returns images list)
             record = await db.delete_product(channel_id, message_id)
@@ -53,20 +54,20 @@ async def DeletProduct():
             # deletes posts that has been published in the main channel 
             await client.delete_messages(utils.CHANNEL_USERNAME, channel_posts_id)
 
-            # check if records variable already not got any value
+            if record is None:
+                continue
+
             if records is None:
-                records = record[0]["images"]
+                records = record
             else:
-                # add list of urls to it so it does not need to be list in list the result is like [url] + [newurl] = [url, newurl]
-                records += record[0]["images"]
+                records += record
         
     if records is None:
         return
     
     # deleting image from cloud
     for image in records:
-        filename = image.split("/")[-1]
-        await DeleteImage(filename)
+        os.remove(image)
     
 
     
@@ -81,7 +82,7 @@ async def main():
 
         # a scheduler to run every night at 2 am to delete records from database that removed from channels
         scheduler = AsyncIOScheduler(timezone=pytz.timezone("Asia/Tehran"))
-        scheduler.add_job(DeletProduct, "cron", hour=1, minute=15)
+        scheduler.add_job(DeleteProduct, "cron", hour=1, minute=15)
         scheduler.start()
 
         @client.on(events.MessageEdited(chats=["t3362"]))
