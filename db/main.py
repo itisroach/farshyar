@@ -84,8 +84,8 @@ class Database():
                 result = []
 
                 for row in await cur.fetchall():
-                    if "url" in row:
-                        result.append(row["url"])
+                    if "filename" in row:
+                        result.append(row["filename"])
                     else:
                         result = None
 

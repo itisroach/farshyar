@@ -17,7 +17,7 @@ create_images_table_query = """
     CREATE TABLE IF NOT EXISTS images(
         id          INT PRIMARY KEY AUTO_INCREMENT,
         product_id  INT,
-        url         TEXT NOT NULL,
+        filename    TEXT NOT NULL,
         FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
     );
 """
@@ -29,7 +29,7 @@ insert_item_query = """
 """
 
 insert_images_query = """
-    INSERT INTO images (product_id, url) VALUES (%s, %s);
+    INSERT INTO images (product_id, filename) VALUES (%s, %s);
 """
 
 fetch_items_to_remove = """
@@ -38,7 +38,7 @@ fetch_items_to_remove = """
 
 
 fetch_images_to_remove = """
-    SELECT url FROM images WHERE product_id = (SELECT id FROM products WHERE post_id = %s AND channel_id = %s)
+    SELECT filename FROM images WHERE product_id = (SELECT id FROM products WHERE post_id = %s AND channel_id = %s)
 """
 
 delete_item_query = """
@@ -65,7 +65,7 @@ fetch_items_query = """
         p.post_link, 
         p.post_id, 
         p.channel_id,
-        JSON_ARRAYAGG(i.url) AS images,
+        JSON_ARRAYAGG(i.filename) AS images,
         DATE_FORMAT(p.created_at, '%Y/%m/%d %H:%i:%s') AS created_at 
     FROM products p
     LEFT JOIN images i ON p.id = i.product_id
