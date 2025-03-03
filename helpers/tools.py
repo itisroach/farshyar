@@ -142,9 +142,10 @@ async def Create_Data(client, extractedWords: list[str], db, event, edited=False
     except Exception as e:
         message_id = str(event.id)
 
-
+    code = str(event.chat.id)[-4:]
 
     data = {
+        "code": code,
         "title": "",
         "details": "",
         "sizes": [],
