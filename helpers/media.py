@@ -1,13 +1,14 @@
 from db.main import Database
 from .utils import ChannelMessage
+import pathlib
 
-
+ROOT_DIR = pathlib.Path(__file__).parent.parent
 db = Database()
 
 async def ProcessImages(event, client, data, isAlbum):
     
     paths = []
-
+    
     # check if it is multiple images 
     if isAlbum:
         # iterating through all images
@@ -21,9 +22,8 @@ async def ProcessImages(event, client, data, isAlbum):
             # genearting unique file name based on ids
             filename = f"{image.chat.id}-{image.id}.jpg"
             # uploading file locally on machine
-            file_path = await client.download_media(image, f"./media/{filename}")
-
-            paths.append(file_path)
+            await client.download_media(image, f"{ROOT_DIR}/media/{filename}")
+            paths.append(filename)
 
     # if it's only one image
     else:
@@ -32,8 +32,8 @@ async def ProcessImages(event, client, data, isAlbum):
         # generating file name based on photo id
         filename = f"{event.chat.id}-{event.message.id}.jpg"
         # downloading photo into the machine
-        file_path = await client.download_media(photo, f"./media/{filename}")
-        paths.append(file_path)        
+        await client.download_media(photo, f"{ROOT_DIR}/media/{filename}")
+        paths.append(filename)        
 
     
     # a class for accessing channel and publishing posts in it
