@@ -9,6 +9,8 @@ from .media import ProcessImages
 
 # a function to remove phone numbers, links and username also it deletes some unecessary characters
 def CleanText(text):
+    text = text.replace('درجه ۱', "درجه یک")
+    text = text.replace('درجه 1', "درجه یک")
     text = re.sub(r'(\+?۹۸|۰|\+?98|0)[۰-۹0-9]{10}', '', text)  # Matches +98 or 0 followed by 9 and then 9 digits
     
     # Remove links (URLs starting with http://, https:// or www.)
@@ -40,12 +42,12 @@ def ExtractWithoutDuplicateInfo(text, data):
         text = text.replace(str(value), "")
         
     
-    if "شانه" in text or re.search(r"(?<!\S)[\d\u06F0-\u06F9]*ش|[\d\u06F0-\u06F9]ش(?!\S)", text) is not None or text in ["1500", "1000", "700", "1200", "۱۲۰۰", "۱۰۰۰", "۷۰۰", "۱۵۰۰"]:
+    if "شانه" in text or re.search(r"\bش\b|[\d\u06F0-\u06F9]+\s*ش|ش\s*[\d\u06F0-\u06F9]+", text) is not None or text in ["1500", "1000", "700", "1200", "۱۲۰۰", "۱۰۰۰", "۷۰۰", "۱۵۰۰"]:
         comb = EnglishToPersianNumbers(data["comb"])
         if "شانه" in text:
             text = text.replace("شانه", "")
         else:
-            text = re.sub(r"(?<!\S)[\d\u06F0-\u06F9]*ش|[\d\u06F0-\u06F9]ش(?!\S)", "", text)
+            text = re.sub(r"\bش\b|[\d\u06F0-\u06F9]+\s*ش|ش\s*[\d\u06F0-\u06F9]+", "", text)
 
         text = text.replace(comb, "")
         # for english numbers in text
@@ -54,29 +56,28 @@ def ExtractWithoutDuplicateInfo(text, data):
     text = text.replace("متری", "")
     text = text.replace("متر", "")
 
-    for size in data["sizes"]:
-        text = text.replace(EnglishToPersianNumbers(size[0]), "")
-        # for english numbers in text
-        text = text.replace(str(size[0]), "")
-
-        text = text.replace(EnglishToPersianNumbers(size[1]), "")
-        # for english numbers in text
-        text = text.replace(str(size[1]), "")
 
     # checks if the نخته is in the match and if it is it will be considered as quantity in Sizes class
-    if "تخته" in text or re.search(r"(?<!\S)[\d\u06F0-\u06F9]*ت|[\d\u06F0-\u06F9]ت(?!\S)", text) is not None:
+    if "تخته" in text or re.search(r"\bت\b|[\d\u06F0-\u06F9]+\s*ت|ت\s*[\d\u06F0-\u06F9]+", text) is not None:
         if "تخته" in text:
             text = text.replace("تخته", "")
         else:
-            text = re.sub(r"(?<!\S)[\d\u06F0-\u06F9]*ت|[\d\u06F0-\u06F9]ت(?!\S)", "", text)
+            text = re.sub(r"\bت\b|[\d\u06F0-\u06F9]+\s*ت|ت\s*[\d\u06F0-\u06F9]+", "", text)
+
+
+    for size in data["sizes"]:
+        pattern = fr"\b{size[0]}\b|\b{size[1]}\b|ت\s*(?:{size[0]})"
+        text = re.sub(pattern, "", text).strip()
+        pattern = rf"(?<!\S){EnglishToPersianNumbers(size[0])}(?!\S)|(?<!\S){EnglishToPersianNumbers(size[1])}(?!\S)|ت\s*(?:{EnglishToPersianNumbers(size[0])})"
+        text = re.sub(pattern, "" , text).strip()
 
     text = text.replace("فرش", "")
     text = text.replace("موجود است", "")
     text = text.replace("موجود میباشد", "")
     text = text.replace("موجود می باشد", "")
-    text = text.strip().replace("  ", " ")
+    text = text.strip().replace("  ", "\n")
 
-    return text.replace("\n", " ")
+    return text
 
 
 # a function to simply convert English digits to Persian digits
