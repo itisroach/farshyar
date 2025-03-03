@@ -2,9 +2,10 @@ import logging
 import os
 import json
 from dotenv import load_dotenv
+import pathlib
 
 
-
+ROOT_DIR = pathlib.Path(__file__).parent.parent
 
 load_dotenv()
 
@@ -45,7 +46,7 @@ class ChannelMessage:
         # checks if images is an ablum or not
         if type(images) is list:
             # it will return message id so we can store it in database
-            messages = await self.client.send_file(CHANNEL_USERNAME, images, caption=self.caption, force_document=False)
+            messages = await self.client.send_file(CHANNEL_USERNAME, [os.path.join(ROOT_DIR, "media", image) for image in images], caption=self.caption, force_document=False)
             return json.dumps([message.id for message in messages])
         else:
             message = await self.client.send_message(CHANNEL_USERNAME, self.caption)
