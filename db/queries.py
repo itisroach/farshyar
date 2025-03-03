@@ -1,6 +1,7 @@
 create_table_query = """
     CREATE TABLE IF NOT EXISTS products (
         id               INT AUTO_INCREMENT PRIMARY KEY,
+        code             VARCHAR(4) NOT NULL,
         title            VARCHAR(256) NOT NULL,
         sizes            JSON NOT NULL,
         comb             INT NOT NULL,
@@ -24,8 +25,8 @@ create_images_table_query = """
 
 
 insert_item_query = """
-    INSERT INTO products (title, details, sizes, comb, post_link, post_id, channel_id, channel_posts_id)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
+    INSERT INTO products (code, title, details, sizes, comb, post_link, post_id, channel_id, channel_posts_id)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);
 """
 
 insert_images_query = """
@@ -58,6 +59,7 @@ returning_update_query = """
 fetch_items_query = """
     SELECT 
         p.id,
+        p.code,
         p.title, 
         p.sizes, 
         p.comb,
