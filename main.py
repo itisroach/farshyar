@@ -1,134 +1,116 @@
-from telethon import TelegramClient, events, types
+import asyncio
+from telethon import TelegramClient, events
 from helpers import utils
 from db.main import Database
-from helpers import messageParser
-import asyncio
+from helpers import messageParser, tools
 import os
-from helpers import tools
+import random
 import pytz
-import json
 from helpers import extractOldMessages
 from apscheduler.schedulers.asyncio import AsyncIOScheduler 
-from helpers import utils
+from telethon.tl.types import MessageMediaDocument
 
-
-# telegram credentials
-API_ID    = utils.ReadEnvVar("API_ID")
-API_HASH  = utils.ReadEnvVar("API_HASH")
+# Telegram credentials
+API_ID = utils.ReadEnvVar("API_ID")
+API_HASH = utils.ReadEnvVar("API_HASH")
 BOT_TOKEN = utils.ReadEnvVar("BOT_TOKEN")
 SESSION_NAME = utils.ReadEnvVar("SESSION_NAME")
+ROOT_DIR = utils.ReadEnvVar("ROOT_DIR")
+CHANNELS_NAME_FILE = utils.ReadEnvVar("CHANNELS_NAME_FILE")
 
-# an instance of telegram client
-client = TelegramClient(session=SESSION_NAME, api_id=API_ID, api_hash=API_HASH)
 
-
-# an instance of database connection
+# Database instance
 db = Database()
 
-# a function that removes records from database that are not in channels
-async def DeleteProduct():
-    # getting all product post and channel ids to check for existance in channels
-    products = await db.fetch_products_to_remove()
+# Read channels from file
+channels_to_look_for = utils.ReadChannels("/home/farshya1/python_bot/farshyab.txt")
+for idx, channel in enumerate(channels_to_look_for):
+    channels_to_look_for[idx] = channel.split()[0]
 
-    # a variable that can store image urls to remove from cloud
+
+async def DeleteProduct(client):
+    # Delete records from the database that are not in the Telegram channel.
+    products = await db.fetch_products_to_remove()
     records = None
 
-    # iterating over products to gett each product image urls and check for their existance
     for product in products:
         channel_id = int(product["channel_id"])
         message_id = int(product["post_id"])
-        
-
-        # check if the message exists in channel
+        await asyncio.sleep(random.uniform(2, 4))
+        # Check if the message exists in the channel
         message_found = await client.get_messages(channel_id, ids=message_id)
 
-        # if message was not found in channel
         if message_found is None:
             channel_id = str(channel_id)
             message_id = str(message_id)
-            channel_posts_id = json.loads(product["channel_posts_id"])
 
-            # deleting the product related to message (the query returns images list)
+            # Delete product record
             record = await db.delete_product(channel_id, message_id)
+            if record:
+                records = record if records is None else records + record
 
-            # deletes posts that has been published in the main channel 
-            await client.delete_messages(utils.CHANNEL_USERNAME, channel_posts_id)
-
-            if record is None:
-                continue
-
-            if records is None:
-                records = record
-            else:
-                records += record
-        
-    if records is None:
-        return
-    
-    # deleting image from cloud
-    for image in records:
-        os.remove(image)
-    
-
-    
-
+    if records:
+        for image in records:
+            os.remove(os.path.join(ROOT_DIR, "images", image))
 
 
 async def main():
+    await db.init_db()
+    # Create the client instance
+    client = await TelegramClient(SESSION_NAME, API_ID, API_HASH).start()
     
-    async with client:
+    async def DeleteProductExecuter():
+        await DeleteProduct(client)
+    
+    await extractOldMessages.JoinChannels(client, CHANNELS_NAME_FILE)
 
-        await db.init_db()
+    # Scheduler to delete products at 1:15 AM
+    scheduler = AsyncIOScheduler(timezone=pytz.timezone("Asia/Tehran"))
+    scheduler.add_job(DeleteProductExecuter, "cron", hour=2, minute=0)
+    scheduler.start()
 
-        # a scheduler to run every night at 2 am to delete records from database that removed from channels
-        scheduler = AsyncIOScheduler(timezone=pytz.timezone("Asia/Tehran"))
-        scheduler.add_job(DeleteProduct, "cron", hour=1, minute=15)
-        scheduler.start()
+    @client.on(events.MessageEdited(chats=channels_to_look_for))
+    async def ListenForEditedMessages(event):
+        if "روتین" in event.text or "فروخته"in event.text or "فروش"  in event.text:
+                            return
+        matches = messageParser.ParseMessage(event.text)
+        await tools.Create_Data(client, matches, db, event, True)
 
-        @client.on(events.MessageEdited(chats=["t3362"]))
-        async def ListenForEditedMessages(event):
+    @client.on(events.Album(chats=channels_to_look_for))
+    async def ListenForImages(event):
         
-            matches = messageParser.ParseMessage(event.text)
-
-            await tools.Create_Data(client, matches, db, event, True)
-            
-        @client.on(events.NewMessage(chats=["t3362"]))
-        async def ListenForMessages(event):
-            if "روتین" in event.text:
-                return
-            # if message contains mutiple images goes out of function
-            if event.message.grouped_id:
-                return
+        await asyncio.sleep(random.uniform(2, 4))
+        matches = messageParser.ParseMessage(event.text)
+        asyncio.create_task(tools.Create_Data(client, matches, db, event, False, True))
 
 
-            # checks if message contains text
-            if event.text:
-                # geetting  matched from the text
-                matches = messageParser.ParseMessage(event.text)
+    @client.on(events.NewMessage(chats=channels_to_look_for))
+    async def ListenForMessages(event):
+        if event.message.grouped_id:  # Ignore grouped images
+            return
+        
+        await asyncio.sleep(random.uniform(2, 4))
+        if "روتین" in event.text:
+            return
+        
+        matches = messageParser.ParseMessage(event.text)
+        if hasattr(event, "media") and isinstance(event.media, MessageMediaDocument):
+            return
+        if event.message.photo:
+            asyncio.create_task(tools.Create_Data(client, matches, db, event, False, False))
 
-                # checks if message contains only one image 
-                if event.message.photo:
-                    # runs this procces in background
-                    asyncio.create_task(tools.Create_Data(client ,matches, db, event, False, False))
-
-                # add products to database if we don't have image
-                else:
-                    await tools.Create_Data(client, matches, db, event, False, None)
-
-        # this event happens when multiple images sent
-        @client.on(events.Album(chats=["t3362"]))
-        async def ListenForImages(event):
-            # check if message contains text
-            if event.text:
-                # finding matches in text
-                matches = messageParser.ParseMessage(event.text)
-                # uploading file to cloud in the background
-                asyncio.create_task(tools.Create_Data(client, matches, db, event, False, True))
-
-                
+    
+    # Start the client properly
+    async with client:
         await client.run_until_disconnected()
 
 
-
+# Fix the event loop handling
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except RuntimeError as e:
+        if "Event loop is closed" in str(e):
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(main())

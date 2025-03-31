@@ -9,9 +9,8 @@ create_table_query = """
         post_link        TEXT NOT NULL,
         post_id          VARCHAR(100) NOT NULL,
         channel_id       VARCHAR(100) NOT NULL,
-        channel_posts_id JSON,
         created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
+    )ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 """
 
 create_images_table_query = """
@@ -25,8 +24,8 @@ create_images_table_query = """
 
 
 insert_item_query = """
-    INSERT INTO products (code, title, details, sizes, comb, post_link, post_id, channel_id, channel_posts_id)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);
+    INSERT INTO products (code, title, details, sizes, comb, post_link, post_id, channel_id)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
 """
 
 insert_images_query = """
@@ -34,12 +33,12 @@ insert_images_query = """
 """
 
 fetch_items_to_remove = """
-    SELECT channel_id, post_id, channel_posts_id FROM products;
+    SELECT channel_id, post_id FROM products;
 """
 
 
 fetch_images_to_remove = """
-    SELECT filename FROM images WHERE product_id = (SELECT id FROM products WHERE post_id = %s AND channel_id = %s)
+    SELECT filename FROM images WHERE product_id IN (SELECT id FROM products WHERE post_id = %s AND channel_id = %s)
 """
 
 delete_item_query = """
@@ -52,9 +51,6 @@ update_item_query = """
     WHERE channel_id = %s AND post_id = %s;
 """
 
-returning_update_query = """
-    SELECT channel_posts_id FROM products WHERE channel_id = %s AND post_id = %s
-"""
 
 fetch_items_query = """
     SELECT 

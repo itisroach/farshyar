@@ -4,4 +4,3 @@ Farshyab.session
 .env
 __pycache__
 farshyab.txt
-extractOldMessages.py

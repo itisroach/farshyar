@@ -1,14 +1,17 @@
 from db.main import Database
-from .utils import ChannelMessage
-import pathlib
+import datetime
+import random
+import asyncio
+from .utils import ReadEnvVar
+from telethon.tl.types import MessageMediaDocument
 
-ROOT_DIR = pathlib.Path(__file__).parent.parent
+ROOT_DIR = ReadEnvVar("ROOT_DIR")
 db = Database()
 
 async def ProcessImages(event, client, data, isAlbum):
     
     paths = []
-    
+    timestamp = datetime.datetime.utcnow()
     # check if it is multiple images 
     if isAlbum:
         # iterating through all images
@@ -19,29 +22,35 @@ async def ProcessImages(event, client, data, isAlbum):
             images = event.messages
 
         for image in images:
+        
+            if isinstance(image.media , MessageMediaDocument):
+                continue
             # genearting unique file name based on ids
-            filename = f"{image.chat.id}-{image.id}.jpg"
+            filename = f"{image.chat.id}-{image.id}-{timestamp}.jpg"
+            filename = filename.replace(":", "_")
             # uploading file locally on machine
-            await client.download_media(image, f"{ROOT_DIR}/media/{filename}")
+            await asyncio.sleep(random.uniform(1, 3))
+            await client.download_media(image, f"{ROOT_DIR}/images/{filename}")
             paths.append(filename)
 
     # if it's only one image
     else:
-        photo = event.message.photo
-
-        # generating file name based on photo id
-        filename = f"{event.chat.id}-{event.message.id}.jpg"
+        if hasattr(event, "photo"):
+            photo = event.photo
+            # generating file name based on photo id
+            filename = f"{event.chat.id}-{event.id}-{timestamp}.jpg"
+        elif hasattr(event.message , "photo"):
+            photo = event.message.photo
+            # generating file name based on photo id
+            filename = f"{event.chat.id}-{event.message.id}-{timestamp}.jpg"
+        else:
+            return None
+        
+        filename = filename.replace(":", "_")
         # downloading photo into the machine
-        await client.download_media(photo, f"{ROOT_DIR}/media/{filename}")
+        await asyncio.sleep(random.uniform(1, 3))
+        await client.download_media(photo, f"{ROOT_DIR}/images/{filename}")
         paths.append(filename)        
 
-    
-    # a class for accessing channel and publishing posts in it
-    channel_message = ChannelMessage(client, data)
-    message_ids = await channel_message.SendToChannel(paths)
-
-    # adding post ids in database so it can be accessable 
-    data["channel_posts_id"] = message_ids
 
     return paths
-

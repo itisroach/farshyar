@@ -4,9 +4,9 @@ import sys
 from . import queries
 
 DBConfig = {
-    "user": "root",
+    "user": utils.ReadEnvVar("DB_USER"),
     "password": utils.ReadEnvVar("DB_PASS"),
-    "host": utils.ReadEnvVar("DB_HOST"),
+    "host": "localhost",
     "db": utils.ReadEnvVar("DB_NAME"),
     "minsize": 1,
     "maxsize": 30
@@ -71,10 +71,6 @@ class Database():
             async with connection.cursor(aiomysql.DictCursor) as cur:
                 await cur.execute(queries.update_item_query, (*args, channel_id, message_id))              
                 await connection.commit()
-                await cur.execute(queries.returning_update_query, (channel_id, message_id))
-                result = await cur.fetchall()
-
-                return result 
         
     async def delete_product(self, channel_id, post_id):
         async with self.pool.acquire() as connection:
